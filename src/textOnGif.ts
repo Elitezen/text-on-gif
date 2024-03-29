@@ -31,9 +31,9 @@ declare interface TextOnGif<T extends string | Buffer> {
  */
 class TextOnGif<T extends string | Buffer> extends Events implements TextOnGif<T> {
     /**
-     * The file path of the source gif.
+     * The source of the GIF. Either a file path, URL, or local Buffer.
      */
-    private gifSource: T;
+    public source: T;
 
     /**
      * The number of frames of the source gif.
@@ -105,8 +105,7 @@ class TextOnGif<T extends string | Buffer> extends Events implements TextOnGif<T
     constructor(gifSource: T) {
         super();
 
-        this.gifSource = gifSource;
-        
+        this.source = gifSource;
         this.extractedFrames = [];
     }
 
@@ -130,7 +129,7 @@ class TextOnGif<T extends string | Buffer> extends Events implements TextOnGif<T
      */
     async #extractFrames(): Promise<void> {
         const frameData = await gifFrames({
-            url: this.gifSource,
+            url: this.source,
             frames: "all",
             outputType: "png",
             cumulative: false
