@@ -17,7 +17,7 @@ import { Readable, type Stream } from "stream";
 /**
  * Event typings for `TextOnGif`
  */
-declare interface TextOnGif {
+declare interface TextOnGif<T extends string | Buffer> {
     on(event: "frameDataExtreacted", listener: () => void): this;
     on(event: "extractionComplete", listener: () => void): this;
     on(event: "progress", listener: (percent: number) => void): this;
@@ -29,11 +29,11 @@ declare interface TextOnGif {
  * TextOnGif Class
  * @extends {Events}
  */
-class TextOnGif extends Events implements TextOnGif {
+class TextOnGif<T extends string | Buffer> extends Events implements TextOnGif<T> {
     /**
      * The file path of the source gif.
      */
-    private filePath: string;
+    private gifSource: T;
 
     /**
      * The number of frames of the source gif.
@@ -102,10 +102,11 @@ class TextOnGif extends Events implements TextOnGif {
      * Creates a new `  TextOnGif` instance
      * @param {string} path The path of the source gif.
      */
-    constructor(path: string) {
+    constructor(gifSource: T) {
         super();
 
-        this.filePath = path;
+        this.gifSource = gifSource;
+        
         this.extractedFrames = [];
     }
 
@@ -129,7 +130,7 @@ class TextOnGif extends Events implements TextOnGif {
      */
     async #extractFrames(): Promise<void> {
         const frameData = await gifFrames({
-            url: this.filePath,
+            url: this.gifSource,
             frames: "all",
             outputType: "png",
             cumulative: false
