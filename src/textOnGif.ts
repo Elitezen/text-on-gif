@@ -7,11 +7,11 @@ import * as gifFrames from "gif-frames";
 import * as GIFEncoder from "gif-encoder-2";
 
 import * as Events from "events";
-import { Image, ImageData, createCanvas, registerFont } from "canvas";
+import { Image, ImageData, createCanvas, CanvasRenderingContext2D, registerFont } from "canvas";
 import { createWriteStream } from "fs";
 import { unlink } from "fs/promises";
 
-import type { ExtractedFrame, FontOptions, TextOptions } from "../src/types";
+import type { CanvasOptions, ExtractedFrame, FontOptions, Row, TextOptions } from "../src/types";
 import { Readable, type Stream } from "stream";
 
 /**
@@ -99,6 +99,22 @@ class TextOnGif<T extends string | Buffer> extends Events implements TextOnGif<T
     private buffer: Buffer | null = null;
 
     /**
+     * The canvas options
+     * @type {CanvasOptions}
+     */
+    public canvasOptions: CanvasOptions = {
+        x: 0,
+        y: 0,
+        textAlign: "start",
+        textBaseline: "bottom"
+    };
+
+    /**
+     * The rows of text.
+     */
+    private rows: Row[] = [];
+
+    /**
      * Creates a new `  TextOnGif` instance
      * @param {string} path The path of the source gif.
      */
@@ -177,6 +193,7 @@ class TextOnGif<T extends string | Buffer> extends Events implements TextOnGif<T
             this.textOptions = Object.assign(this.textOptions, options);
 
         this.text = text;
+        this.rows = [];
         await this.#extractFrames();
 
         return this;
@@ -195,6 +212,31 @@ class TextOnGif<T extends string | Buffer> extends Events implements TextOnGif<T
         } else {
             throw new Error("Result GIF buffer returned empty");
         }
+    }
+    
+    /**
+     * Verifies the rows of the text.
+     * @param {CanvasRenderingContext2D} ctx The canvas context.
+     */
+    async createTextRows(ctx: CanvasRenderingContext2D) {
+        let previewText: string[] = [], lineText = [];
+
+        for (var word of this.text.split(" ")) {
+            previewText.push(word);
+            
+            if (ctx.measureText(previewText.join(" ")).width > this.width) {
+                this.rows.push({ text: lineText.join(" ") });
+                
+                previewText = [word];
+                lineText = [];
+            }
+            
+            lineText.push(word);
+        }
+        
+        this.rows.push({
+            text: lineText.join(" ")
+        });
     }
 
     /**
@@ -235,94 +277,66 @@ class TextOnGif<T extends string | Buffer> extends Events implements TextOnGif<T
             this.emit("progress", percent);
         });
 
-        const words = text.split(" ");
-
         const approximateLineHeight = ctx.measureText("M").width;
-        const spaceWidth =
-            ctx.measureText("M M").width - ctx.measureText("M").width * 2;
-
-        let rows = [
-            {
-                text: words[0] + " ",
-                width: ctx.measureText(words[0]).width + spaceWidth
-            }
-        ];
-
-        for (let i = 1; i < words.length; i++) {
-            let moveToNextRow =
-                rows[rows.length - 1].width +
-                    ctx.measureText(words[i]).width +
-                    spaceWidth <=
-                this.width
-                    ? 0
-                    : 1;
-            rows[rows.length - 1 + moveToNextRow] = {
-                text:
-                    (rows[rows.length - 1 + moveToNextRow] != null
-                        ? rows[rows.length - 1 + moveToNextRow].text
-                        : "") +
-                    words[i] +
-                    " ",
-                width:
-                    (rows[rows.length - 1 + moveToNextRow] != null
-                        ? rows[rows.length - 1 + moveToNextRow].width
-                        : 0) +
-                    ctx.measureText(words[i]).width +
-                    spaceWidth
-            };
-        }
-
-        let x, y: number;
+        await this.createTextRows(ctx)
 
         if (this.textOptions.positionX != null) {
-            ctx.textAlign = "start";
-            x = this.textOptions.positionX;
-        } else {
+            this.canvasOptions.textAlign = "start" as CanvasTextAlign;
+            this.canvasOptions.x = this.textOptions.positionX;
+        }
+        else {
             if (this.textOptions.alignmentX == "right") {
-                ctx.textAlign = "right";
-                x = this.width - this.textOptions.offsetX;
-            } else if (this.textOptions.alignmentX == "left") {
-                ctx.textAlign = "left";
-                x = this.textOptions.offsetX;
-            } else {
-                ctx.textAlign = "center";
-                x = this.width / 2;
+                this.canvasOptions.textAlign = "right";
+                this.canvasOptions.x = this.width - this.textOptions.offsetX;
+            }
+            else if (this.textOptions.alignmentX == "left") {
+                this.canvasOptions.textAlign = "left";
+                this.canvasOptions.x = this.textOptions.offsetX;
+            }
+            else if (this.textOptions.alignmentX == "center") {
+                this.canvasOptions.textAlign = "center";
+                this.canvasOptions.x = this.width / 2;
             }
         }
-
         if (this.textOptions.positionY != null) {
-            ctx.textBaseline = "top";
-            y = this.textOptions.positionY;
-        } else {
-            if (rows.length == 1) {
+            this.canvasOptions.textBaseline = "top";
+            this.canvasOptions.y = this.textOptions.positionY;
+        }
+        else {
+            if (this.rows.length == 1) {
                 if (this.textOptions.alignmentY == "top") {
-                    ctx.textBaseline = "hanging";
-                    y = this.textOptions.offsetY;
-                } else if (this.textOptions.alignmentY == "middle") {
-                    ctx.textBaseline = "middle";
-                    y = this.height / 2;
-                } else {
-                    ctx.textBaseline = "bottom";
-                    y = this.height - this.textOptions.offsetY;
+                    this.canvasOptions.textBaseline = "hanging";
+                    this.canvasOptions.y = this.textOptions.offsetY;
                 }
-            } else {
+                else if (this.textOptions.alignmentY == "middle") {
+                    this.canvasOptions.textBaseline = "middle";
+                    this.canvasOptions.y = this.height / 2;
+                }
+                else {
+                    this.canvasOptions.textBaseline = "bottom";
+                    this.canvasOptions.y = this.height - this.textOptions.offsetY;
+                }
+            }
+            else {
                 if (this.textOptions.alignmentY == "top") {
-                    ctx.textBaseline = "hanging";
-                    y = this.textOptions.offsetY;
-                } else if (this.textOptions.alignmentY == "middle") {
-                    ctx.textBaseline = "top";
-                    y =
+                    this.canvasOptions.textBaseline = "hanging";
+                    this.canvasOptions.y = this.textOptions.offsetY;
+                }
+                else if (this.textOptions.alignmentY == "middle") {
+                    this.canvasOptions.textBaseline = "top";
+                    this.canvasOptions.y =
                         (this.height -
-                            (rows.length * approximateLineHeight +
-                                (rows.length - 1) * this.textOptions.rowGap)) /
-                        2;
-                } else {
-                    ctx.textBaseline = "bottom";
-                    y =
+                            (this.rows.length * approximateLineHeight +
+                                (this.rows.length - 1) * this.textOptions.rowGap)) /
+                            2;
+                }
+                else {
+                    this.canvasOptions.textBaseline = "bottom";
+                    this.canvasOptions.y =
                         this.height -
-                        ((rows.length - 1) *
-                            (approximateLineHeight + this.textOptions.rowGap) +
-                            this.textOptions.offsetY);
+                            ((this.rows.length - 1) *
+                                (approximateLineHeight + this.textOptions.rowGap) +
+                                this.textOptions.offsetY);
                 }
             }
         }
@@ -343,34 +357,30 @@ class TextOnGif<T extends string | Buffer> extends Events implements TextOnGif<T
 
             ctx.strokeStyle = this.textOptions.strokeColor;
             ctx.lineWidth = this.textOptions.strokeWidth;
-            ctx.font =
-                this.textOptions.fontSize + " " + this.textOptions.fontFamily;
+            ctx.font = this.textOptions.fontSize + " " + this.textOptions.fontFamily;
             ctx.fillStyle = this.textOptions.fontColor;
+            ctx.textAlign = this.canvasOptions.textAlign as CanvasTextAlign;
+            ctx.textBaseline = this.canvasOptions.textBaseline as CanvasTextBaseline;
 
             let withoutText: ImageData;
+
+            if (this.rows.length == 0) await this.createTextRows(ctx);
+
             if (this.extractedFrames[index].disposal != 2) {
                 withoutText = ctx.getImageData(0, 0, this.width, this.height);
             }
 
-            if (rows.length == 1) {
-                ctx.strokeText(text, x, y);
-                ctx.fillText(text, x, y);
+            if (this.rows.length == 1) {
+                ctx.strokeText(this.text, this.canvasOptions.x, this.canvasOptions.y);
+                ctx.fillText(this.text, this.canvasOptions.x, this.canvasOptions.y);
             } else {
-                for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
-                    ctx.strokeText(
-                        rows[rowIndex].text.slice(0, -1),
-                        x,
-                        rowIndex *
-                            (approximateLineHeight + this.textOptions.rowGap) +
-                            y
-                    );
-                    ctx.fillText(
-                        rows[rowIndex].text.slice(0, -1),
-                        x,
-                        rowIndex *
-                            (approximateLineHeight + this.textOptions.rowGap) +
-                            y
-                    );
+                var reverseRows = new Array(...this.rows).reverse();
+                for (let rowIndex = 0; rowIndex < this.rows.length; rowIndex++) {
+                    var lineText = reverseRows[rowIndex].text
+                    await ctx.strokeText(lineText, this.canvasOptions.x, this.canvasOptions.y - 
+                        (rowIndex * (approximateLineHeight + this.textOptions.rowGap)));
+                    await ctx.fillText(lineText, this.canvasOptions.x, this.canvasOptions.y - 
+                        (rowIndex * (approximateLineHeight + this.textOptions.rowGap)));
                 }
             }
 
