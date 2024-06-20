@@ -1,6 +1,10 @@
 *text-on-gif is a simple package for writing text on gifs*
 
-> **NOTES**
+> **NOTES** This is a fork of https://github.com/sanidhya711/text-on-gif
+
+### Contributors to this fork
+
+[PeterStark000](https://github.com/PeterStark000)
 
 ## **Basic Usage**
 ```js
@@ -9,19 +13,30 @@ const { TextOnGif } = require('gift-on-text')
 const gifURL = 'https://upload.wikimedia.org/wikipedia/commons/2/2c/Rotating_earth_%28large%29.gif';
 
 // -- In async function or top-level await supported namespace --
-const gif = await new TextOnGif(gifURL)
-    .setText('Hello World', {
-        fontColor: 'white',
-        alignmentX: 'center'
-    })
+const gif = new TextOnGif(gifURL);
 
-await gif.toFile('test.gif');     // Save as file
+await gif.setText('Hello', {
+    alignmentY: "top",
+    alignmentX: "left"
+});
 
-const buffer = await gif.toBuffer(); // Or get buffer data
+// Update on the fly
+gif.on("frameIndexUpdate", async (frameIndex) => {
+    if (frameIndex == 15) {
+        gif.canvasOptions.y = 150;
+        gif.canvasOptions.x = 110;
+
+        await gif.setText("World");
+    }
+});
+
+await gif.toFile('result.gif'); // Save new gif
+
+const gifBuffer = await gif.toBuffer(); // get buffer
 ```
 
 # Result
-![Gif with text example](https://imgur.com/cYJki4x.gif)
+![Gif with text example](https://i.imgur.com/SFHnAc0.gif)
 
 # Writing Text on a GIF:
 
@@ -59,7 +74,7 @@ Parameter Name                | Type                 | Default Value
 [offsetY](#offsetY)           | Number               | 10
 [rowGap](#rowGap)             | Number               | 5
 [repeat](#repeat)             | Number               | 0
-[retain](#retain)             | Boolean              | false
+~~[retain](#retain)~~             | Boolean              | false
 [transparent](#transparent)   | Boolean              | false
 
 To use a font file that is not installed as a system font, use registerFont(). This must be done before calling textOnGif()
@@ -126,7 +141,9 @@ Text to be printed on the gif
 &nbsp;
 
 
-# retain
+# ~~retain~~
+
+> This option is currently non-functional.
 
 if set to true, when you call the textOnGif function to write on the gif, the text will be retained on the source and all consecutive textOnGif function calls will return the gif with the cumulative text.
 

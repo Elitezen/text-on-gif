@@ -115,8 +115,8 @@ class TextOnGif<T extends string | Buffer> extends Events implements TextOnGif<T
     private rows: Row[] = [];
 
     /**
-     * Creates a new `  TextOnGif` instance
-     * @param {string} path The path of the source gif.
+     * Creates a new `TextOnGif` instance.
+     * @param {T} gifSource the source of the gif.
      */
     constructor(gifSource: T) {
         super();
@@ -287,6 +287,7 @@ class TextOnGif<T extends string | Buffer> extends Events implements TextOnGif<T
         else {
             if (this.textOptions.alignmentX == "right") {
                 this.canvasOptions.textAlign = "right";
+                this.canvasOptions.x = this.textOptions.offsetX;
                 this.canvasOptions.x = this.width - this.textOptions.offsetX;
             }
             else if (this.textOptions.alignmentX == "left") {

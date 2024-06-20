@@ -1,5 +1,3 @@
-import type { Image } from "canvas";
-
 type AlignmentXOptions = "left" | "center" | "right";
 type AlignmentYOptions = "top" | "middle" | "bottom";
 
@@ -97,6 +95,7 @@ export interface TextOptions {
 
     /**
      * Whether to maintain this text on the image after consecutive `.setText()` calls.
+     * @deprecated This option is currently not functional. Recursively create new TextOnGif instances from result gifs.
      * @default false
      */
     retain: boolean;
@@ -139,18 +138,20 @@ export interface CanvasOptions {
     y: number;
 
     /**
-     * The text alignment on the x-axis on canvas.
-     * @type {AlignmentXOptions}
+     * The CanvasRenderingContext2D.textAlign property of the Canvas 2D API specifies the current text alignment used when drawing text.
+     * @type {CanvasTextAlign}
+     * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/textAlign
      * @default "center"
      */
-    textAlign: string;
+    textAlign: CanvasTextAlign;
 
     /**
-     * The text alignment on the y-axis on canvas.
-     * @type {AlignmentYOptions}
+     * The CanvasRenderingContext2D.textBaseline property of the Canvas 2D API specifies the current text baseline used when drawing text.
+     * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/textBaseline
+     * @type {CanvasTextBaseline}
      * @default "bottom"
      */
-    textBaseline: string;
+    textBaseline: CanvasTextBaseline;
 }
 
 /**
