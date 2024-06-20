@@ -125,6 +125,46 @@ export interface FontOptions {
 }
 
 /**
+ * Options for settings canvas options.
+ */
+export interface CanvasOptions {
+    /**
+     * The X start of the canvas text.
+     */
+    x: number;
+
+    /**
+     * The Y start of the canvas text.
+     */
+    y: number;
+
+    /**
+     * The text alignment on the x-axis on canvas.
+     * @type {AlignmentXOptions}
+     * @default "center"
+     */
+    textAlign: string;
+
+    /**
+     * The text alignment on the y-axis on canvas.
+     * @type {AlignmentYOptions}
+     * @default "bottom"
+     */
+    textBaseline: string;
+}
+
+/**
+ * Represents an text row.
+ */
+export interface Row {
+    /**
+     * The text row's text.
+     * @type {string}
+     */
+    text: string;
+}
+
+/**
  * Represents an extracted frame.
  */
 export interface ExtractedFrame {
